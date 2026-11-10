@@ -57,7 +57,7 @@ def speak():
             communicator = edge_tts.Communicate(
                 text,
                 voice,
-                rate="-5%",
+                rate="-15%",
                 pitch="-5Hz"
             )
             await communicator.save(path)
