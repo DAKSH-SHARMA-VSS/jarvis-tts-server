@@ -1,3 +1,4 @@
+
 import os
 import tempfile
 import asyncio
@@ -11,6 +12,45 @@ API_KEY = os.environ.get("JARVIS_VOICE_KEY")
 VOICES = {
     "male_indian_english": "en-IN-PrabhatNeural",
     "male_indian_hindi": "hi-IN-MadhurNeural"
+}
+
+# Emotion-based voice settings
+EMOTIONS = {
+    "normal": {
+        "rate": "+15%",
+        "pitch": "-5Hz",
+        "volume": "+0%"
+    },
+    "angry": {
+        "rate": "+25%",
+        "pitch": "+15Hz",
+        "volume": "+15%"
+    },
+    "savage": {
+        "rate": "+18%",
+        "pitch": "+5Hz",
+        "volume": "+8%"
+    },
+    "happy": {
+        "rate": "+22%",
+        "pitch": "+20Hz",
+        "volume": "+12%"
+    },
+    "sad": {
+        "rate": "-15%",
+        "pitch": "-15Hz",
+        "volume": "-10%"
+    },
+    "caring": {
+        "rate": "-8%",
+        "pitch": "-5Hz",
+        "volume": "-5%"
+    },
+    "surprised": {
+        "rate": "+25%",
+        "pitch": "+25Hz",
+        "volume": "+10%"
+    }
 }
 
 
@@ -33,8 +73,10 @@ def speak():
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json(silent=True) or {}
+
     text = data.get("text", "").strip()
     voice_type = data.get("voice", "male_indian_english")
+    emotion = str(data.get("emotion", "normal")).lower().strip()
 
     if not text:
         return jsonify({"error": "Text is required"}), 400
@@ -47,6 +89,13 @@ def speak():
     if not voice:
         return jsonify({"error": "Invalid voice"}), 400
 
+    # Use normal emotion if an invalid emotion is received
+    voice_settings = EMOTIONS.get(emotion)
+
+    if not voice_settings:
+        emotion = "normal"
+        voice_settings = EMOTIONS["normal"]
+
     async def generate():
         with tempfile.NamedTemporaryFile(
             suffix=".mp3", delete=False
@@ -57,11 +106,14 @@ def speak():
             communicator = edge_tts.Communicate(
                 text,
                 voice,
-                rate="+15%",
-                pitch="-5Hz"
+                rate=voice_settings["rate"],
+                pitch=voice_settings["pitch"],
+                volume=voice_settings["volume"]
             )
+
             await communicator.save(path)
             return path
+
         except Exception:
             if os.path.exists(path):
                 os.remove(path)
@@ -83,7 +135,7 @@ def speak():
 
         return response
 
-    except Exception as error:
+    except Exception:
         app.logger.exception("Voice generation failed")
         return jsonify({"error": "Voice generation failed"}), 502
 
